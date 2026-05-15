@@ -52,7 +52,7 @@ pub async fn run(urls: Vec<String>, cfg: MergedConfig, output: Option<String>, q
         use_socket: None,
         show_name: String::new(),
         user_agent: if cfg.user_agent.is_empty() { UA.to_string() } else { cfg.user_agent.clone() },
-        max_retries: cfg.max_retries,
+        max_retries: if cfg.max_retries == 0 { usize::MAX } else { cfg.max_retries },
         retry_delay_ms: cfg.retry_delay_ms,
         max_retry_delay_ms: cfg.max_retry_delay_ms,
         speed_limit_bps: cfg.limit_rate,

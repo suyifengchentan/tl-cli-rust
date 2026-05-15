@@ -74,7 +74,7 @@ pub struct MergedConfig {
 
 // Default values
 fn default_user_agent() -> String {
-    format!("tlcli/{}", env!("CARGO_PKG_VERSION"))
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36".to_string()
 }
 fn default_timeout() -> u64 { 30 }
 fn default_threads() -> usize { 64 }
