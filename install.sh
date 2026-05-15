@@ -2,9 +2,18 @@
 set -e
 
 REPO="suyifengchentan/tl-cli-rust"
-VERSION="${VERSION:-0.1.0}"
 BIN="tl"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
+
+# Resolve latest version if not specified
+if [ -z "${VERSION}" ]; then
+    if command -v curl > /dev/null 2>&1; then
+        VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"v?([0-9.]+)".*/\1/')
+    elif command -v wget > /dev/null 2>&1; then
+        VERSION=$(wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"v?([0-9.]+)".*/\1/')
+    fi
+    VERSION="${VERSION:-0.1.0}"
+fi
 
 case "$(uname -s)" in
     Darwin)  ARCH="darwin-aarch64" ;;
