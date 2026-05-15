@@ -16,10 +16,10 @@ A wget-like CLI download tool powered by [TaiLerDownloader](https://github.com/T
 ## Quick Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/suyifengchentan/tl-downloader/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/suyifengchentan/tl-cli-rust/main/install.sh | sh
 ```
 
-Or download the binary from [Releases](https://github.com/suyifengchentan/tl-downloader/releases).
+Or download the binary from [Releases](https://github.com/suyifengchentan/tl-cli-rust/releases).
 
 ## Usage
 
@@ -127,7 +127,7 @@ CLI flags override config file values, which override built-in defaults.
 ## Build from Source
 
 ```sh
-git clone https://github.com/suyifengchentan/tl-downloader.git
+git clone https://github.com/suyifengchentan/tl-cli-rust.git
 cd tl-downloader
 cargo build --release
 # Binary at: target/release/tl

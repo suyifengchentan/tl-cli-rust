@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-REPO="suyifengchentan/tl-downloader"
+REPO="suyifengchentan/tl-cli-rust"
 VERSION="0.1.0"
 BIN="tl"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
