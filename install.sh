@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-REPO="<your-org>/tlcli"
+REPO="suyifengchentan/tl-downloader"
 VERSION="0.1.0"
 BIN="tl"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
