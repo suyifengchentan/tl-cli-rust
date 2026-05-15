@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use crate::cli::Args;
 
-/// User-facing YAML config file structure.
+/// User-facing TOML config file structure.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     #[serde(default)]
@@ -123,15 +123,15 @@ pub fn load_config(args: &Args) -> AppConfig {
         vec![Some(PathBuf::from(p))]
     } else {
         vec![
-            dirs::home_dir().map(|d| d.join(".config").join("tl").join("config.yaml")),
-            Some(PathBuf::from("tlcli.yaml")),
+            dirs::home_dir().map(|d| d.join(".config").join("tl").join("config.toml")),
+            Some(PathBuf::from("tl.toml")),
         ]
     };
 
     for path in paths.iter().flatten() {
         if path.exists() {
             if let Ok(content) = std::fs::read_to_string(path) {
-                if let Ok(cfg) = serde_yaml::from_str::<AppConfig>(&content) {
+                if let Ok(cfg) = toml::from_str::<AppConfig>(&content) {
                     base = merge_configs(base, cfg);
                 }
             }
@@ -240,10 +240,10 @@ fn pick<T: Eq>(val: T, default: T, builtin: T) -> T {
     if val == builtin { default } else { val }
 }
 
-/// Generate the default YAML config content.
-pub fn default_config_yaml() -> String {
+/// Generate the default TOML config content.
+pub fn default_config_toml() -> String {
     let cfg = AppConfig::default();
-    let mut yaml = serde_yaml::to_string(&cfg).unwrap_or_default();
-    yaml.insert_str(0, "# tl config\n# Location: ~/.config/tl/config.yaml\n\n");
-    yaml
+    let mut out = toml::to_string_pretty(&cfg).unwrap_or_default();
+    out.insert_str(0, "# tl config\n# Location: ~/.config/tl/config.toml\n\n");
+    out
 }

@@ -129,14 +129,10 @@ pub async fn run(urls: Vec<String>, cfg: MergedConfig, output: Option<String>, q
                 }
                 EventType::Update => {
                     if let Some(ref pb) = pb_clone {
-                        if let Some(total) = evt.data.get("total_bytes").and_then(|v| v.as_i64()) {
+                        if let Some(total) = evt.data.get("Total").and_then(|v| v.as_i64()) {
                             pb.set_length(total as u64);
                         }
-                        if let Some(downloaded) = evt.data
-                            .get("Downloaded")
-                            .or_else(|| evt.data.get("total_bytes"))
-                            .and_then(|v| v.as_i64())
-                        {
+                        if let Some(downloaded) = evt.data.get("total_bytes").and_then(|v| v.as_i64()) {
                             pb.set_position(downloaded as u64);
                         }
                     }

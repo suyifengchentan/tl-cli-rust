@@ -12,12 +12,12 @@ async fn main() {
     if args.init_config {
         let home = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
         let cfg_dir = home.join(".config").join("tl");
-        let cfg_path = cfg_dir.join("config.yaml");
+        let cfg_path = cfg_dir.join("config.toml");
         std::fs::create_dir_all(&cfg_dir).unwrap_or_else(|e| {
             eprintln!("tl: failed to create {}: {}", cfg_dir.display(), e);
             std::process::exit(1);
         });
-        std::fs::write(&cfg_path, config::default_config_yaml()).unwrap_or_else(|e| {
+        std::fs::write(&cfg_path, config::default_config_toml()).unwrap_or_else(|e| {
             eprintln!("tl: failed to write {}: {}", cfg_path.display(), e);
             std::process::exit(1);
         });

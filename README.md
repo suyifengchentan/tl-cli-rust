@@ -68,32 +68,34 @@ tl --init-config
 
 Config file search order:
 1. `--config` / `-c` flag
-2. `~/.config/tl/config.yaml`
-3. `./tlcli.yaml` (current directory)
+2. `~/.config/tl/config.toml`
+3. `./tl.toml` (current directory)
 
-```yaml
-# ~/.config/tl/config.yaml
-http:
-  user_agent: tlcli/0.1.0
-  headers:
-    Accept: "*/*"
-    Accept-Encoding: "gzip, deflate"
-  insecure: false
-  timeout: 30
-  bind_address: ""
+```toml
+# ~/.config/tl/config.toml
 
-download:
-  threads: 64
-  chunk_size_mb: 10
-  max_retries: 3
-  retry_delay_ms: 1000
-  max_retry_delay_ms: 30000
-  limit_rate: 0
-  resume: true
-  output_dir: ""
+[http]
+user_agent = "Mozilla/5.0 ... Chrome/125.0.0.0 Safari/537.36"
+insecure = false
+timeout = 30
+bind_address = ""
 
-proxy:
-  url: ""
+[http.headers]
+Accept = "*/*"
+Accept-Encoding = "gzip, deflate"
+
+[download]
+threads = 64
+chunk_size_mb = 10
+max_retries = 3
+retry_delay_ms = 1000
+max_retry_delay_ms = 30000
+limit_rate = 0
+resume = true
+output_dir = ""
+
+[proxy]
+url = ""
 ```
 
 CLI flags override config file values, which override built-in defaults.
