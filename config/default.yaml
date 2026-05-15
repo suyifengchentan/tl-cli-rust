@@ -1,0 +1,24 @@
+# tlcli configuration
+# Location: ~/.config/tlcli/config.yaml
+
+http:
+  user_agent: tlcli/0.1.0
+  headers:
+    Accept: "*/*"
+    Accept-Encoding: "gzip, deflate"
+  insecure: false
+  timeout: 30
+  bind_address: ""
+
+download:
+  threads: 64
+  chunk_size_mb: 10
+  max_retries: 3
+  retry_delay_ms: 1000
+  max_retry_delay_ms: 30000
+  limit_rate: 0
+  resume: true
+  output_dir: ""
+
+proxy:
+  url: ""
