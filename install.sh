@@ -7,8 +7,8 @@ BIN="tl"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 
 case "$(uname -s)" in
-    Darwin)  OS="darwin";  ARCH="arm64" ;;
-    Linux)   OS="linux";   ARCH="amd64" ;;
+    Darwin)  OS="darwin";  ARCH="aarch64" ;;
+    Linux)   OS="linux";   ARCH="x64" ;;
     * )      echo "Unsupported OS"; exit 1 ;;
 esac
 
