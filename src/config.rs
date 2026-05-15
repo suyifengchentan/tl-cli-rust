@@ -123,7 +123,7 @@ pub fn load_config(args: &Args) -> AppConfig {
         vec![Some(PathBuf::from(p))]
     } else {
         vec![
-            dirs::config_dir().map(|d| d.join("tlcli").join("config.yaml")),
+            dirs::home_dir().map(|d| d.join(".config").join("tl").join("config.yaml")),
             Some(PathBuf::from("tlcli.yaml")),
         ]
     };
@@ -244,6 +244,6 @@ fn pick<T: Eq>(val: T, default: T, builtin: T) -> T {
 pub fn default_config_yaml() -> String {
     let cfg = AppConfig::default();
     let mut yaml = serde_yaml::to_string(&cfg).unwrap_or_default();
-    yaml.insert_str(0, "# tlcli configuration\n# Location: ~/.config/tlcli/config.yaml\n\n");
+    yaml.insert_str(0, "# tl config\n# Location: ~/.config/tl/config.yaml\n\n");
     yaml
 }

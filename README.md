@@ -61,18 +61,18 @@ tl --no-resume https://example.com/file.zip
 tl -q https://example.com/file.zip
 
 # Generate default config
-tl --init-config > ~/.config/tlcli/config.yaml
+tl --init-config
 ```
 
 ## Configuration
 
 Config file search order:
 1. `--config` / `-c` flag
-2. `~/.config/tlcli/config.yaml`
+2. `~/.config/tl/config.yaml`
 3. `./tlcli.yaml` (current directory)
 
 ```yaml
-# ~/.config/tlcli/config.yaml
+# ~/.config/tl/config.yaml
 http:
   user_agent: tlcli/0.1.0
   headers:
