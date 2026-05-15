@@ -37,6 +37,7 @@ jobs:
         run: cargo build --release --target ${{ matrix.target }}
 
       - name: Rename artifact
+        shell: bash
         run: |
           SRC="target/${{ matrix.target }}/release/tl${{ matrix.target == 'x86_64-pc-windows-msvc' && '.exe' || '' }}"
           DST="target/${{ matrix.target }}/release/${{ matrix.artifact }}"
