@@ -5,6 +5,7 @@ version = 4
 [[package]]
 name = "TaiLerDownloader"
 version = "0.1.0-dev.6"
+source = "git+https://github.com/suyifengchentan/TaiLerDownloader.git#26a3714e7e85390d757e4dedaa3903d77920ac58"
 dependencies = [
  "async-trait",
  "bytes",
