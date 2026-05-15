@@ -16,7 +16,7 @@ A wget-like CLI download tool powered by [TaiLerDownloader](https://github.com/T
 ## Quick Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/suyifengchentan/tl-cli-rust/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/suyifengchentan/tl-cli-rust/refs/heads/master/install.sh | sh
 ```
 
 Or download the binary from [Releases](https://github.com/suyifengchentan/tl-cli-rust/releases).
