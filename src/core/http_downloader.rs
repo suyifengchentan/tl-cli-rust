@@ -206,12 +206,24 @@ impl HTTPDownloader {
         }
     }
 
+    async fn effective_user_agent(&self) -> String {
+        if let Some(ref config) = self.base.config {
+            let cfg = config.read().await;
+            if !cfg.user_agent.is_empty() {
+                return cfg.user_agent.clone();
+            }
+        }
+        super::downloader::UA.to_string()
+    }
+
     async fn get_file_size(&self, url: &str) -> Result<i64, Box<dyn std::error::Error + Send + Sync>> {
+        let user_agent = self.effective_user_agent().await;
+
         // Use GET bytes=0-0 first (HEAD is often blocked by CDNs / returns 429)
         let response = self.client
             .get(url)
             .header(reqwest::header::RANGE, "bytes=0-0")
-            .header(reqwest::header::USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+            .header(reqwest::header::USER_AGENT, user_agent)
             .send()
             .await?;
 
@@ -288,13 +300,18 @@ impl HTTPDownloader {
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let current_end = end_pos.load(Ordering::Relaxed);
         
-        let (global_headers, task_headers) = {
+        let (user_agent, global_headers, task_headers) = {
             let cfg = self.base.config.as_ref().unwrap().read().await;
-            (cfg.headers.clone(), task.headers.clone())
+            let user_agent = if cfg.user_agent.is_empty() {
+                super::downloader::UA.to_string()
+            } else {
+                cfg.user_agent.clone()
+            };
+            (user_agent, cfg.headers.clone(), task.headers.clone())
         };
         
         let mut headers = HeaderMap::new();
-        headers.insert(USER_AGENT, HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"));
+        headers.insert(USER_AGENT, HeaderValue::from_str(&user_agent)?);
         headers.insert(RANGE, HeaderValue::from_str(&format!("bytes={}-{}", start, current_end))?);
         headers.insert(ACCEPT, HeaderValue::from_static("*/*"));
         headers.insert(ACCEPT_LANGUAGE, HeaderValue::from_static("en-US,en;q=0.9"));
