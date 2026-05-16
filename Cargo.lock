@@ -5,6 +5,7 @@ version = 4
 [[package]]
 name = "TaiLerDownloader"
 version = "0.1.0-dev.6"
+source = "git+https://github.com/suyifengchentan/tl-downloader.git?rev=764691620d68eeaa74acac785c9e86095738e32d#764691620d68eeaa74acac785c9e86095738e32d"
 dependencies = [
  "async-trait",
  "bytes",
@@ -2861,7 +2862,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tlcli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "TaiLerDownloader",
  "clap",

@@ -1,6 +1,6 @@
 [package]
 name = "tlcli"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT"
 description = "A wget-like CLI download tool powered by TaiLerDownloader"
@@ -10,7 +10,7 @@ name = "tl"
 path = "src/main.rs"
 
 [dependencies]
-TaiLerDownloader = { path = "vendor/TaiLerDownloader", default-features = false, features = ["ftp", "torrent", "ed2k"] }
+TaiLerDownloader = { git = "https://github.com/suyifengchentan/tl-downloader.git", rev = "764691620d68eeaa74acac785c9e86095738e32d", default-features = false, features = ["ftp", "torrent", "ed2k"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "signal"] }
 clap = { version = "4", features = ["derive"] }
 indicatif = { version = "0.17", features = ["tokio"] }

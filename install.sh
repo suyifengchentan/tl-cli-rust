@@ -3,7 +3,7 @@ set -e
 
 REPO="suyifengchentan/tl-cli-rust"
 BIN="tl"
-INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
+INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 
 # Resolve latest version if not specified
 if [ -z "${VERSION}" ]; then
@@ -55,7 +55,8 @@ else
 fi
 
 chmod +x "${TMPDIR:-/tmp}/${ARTIFACT}"
-sudo mv "${TMPDIR:-/tmp}/${ARTIFACT}" "${INSTALL_DIR}/${BIN}"
+mkdir -p "${INSTALL_DIR}"
+mv "${TMPDIR:-/tmp}/${ARTIFACT}" "${INSTALL_DIR}/${BIN}"
 echo "Installed to ${INSTALL_DIR}/${BIN}"
 
 if command -v ${BIN} > /dev/null 2>&1; then

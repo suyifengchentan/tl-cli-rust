@@ -17,8 +17,6 @@ pub struct AppConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HttpConfig {
-    #[serde(default = "default_user_agent")]
-    pub user_agent: String,
     #[serde(default)]
     pub headers: HashMap<String, String>,
     #[serde(default)]
@@ -77,16 +75,16 @@ pub struct MergedConfig {
 
 // Default values
 fn default_user_agent() -> String {
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36".to_string()
+    "tlcli/0.1.0".to_string()
 }
 fn default_timeout() -> u64 {
     30
 }
 fn default_threads() -> usize {
-    64
+    4
 }
 fn default_chunk_size() -> usize {
-    10
+    50
 }
 fn default_max_retries() -> usize {
     3
@@ -105,9 +103,9 @@ impl Default for AppConfig {
     fn default() -> Self {
         AppConfig {
             http: HttpConfig {
-                user_agent: default_user_agent(),
                 headers: {
                     let mut h = HashMap::new();
+                    h.insert("User-Agent".into(), default_user_agent());
                     h.insert("Accept".into(), "*/*".into());
                     h.insert("Accept-Encoding".into(), "gzip, deflate".into());
                     h
@@ -161,11 +159,6 @@ pub fn load_config(args: &Args) -> AppConfig {
 fn merge_configs(base: AppConfig, override_cfg: AppConfig) -> AppConfig {
     AppConfig {
         http: HttpConfig {
-            user_agent: pick(
-                override_cfg.http.user_agent,
-                base.http.user_agent,
-                default_user_agent(),
-            ),
             headers: {
                 let mut h = base.http.headers;
                 for (k, v) in override_cfg.http.headers {
@@ -224,7 +217,7 @@ fn merge_configs(base: AppConfig, override_cfg: AppConfig) -> AppConfig {
 /// Merge CLI flags on top of config file values. CLI flags always win.
 pub fn apply_cli_overrides(mut cfg: AppConfig, args: &Args) -> MergedConfig {
     if let Some(ref ua) = args.user_agent {
-        cfg.http.user_agent = ua.clone();
+        cfg.http.headers.insert("User-Agent".to_string(), ua.clone());
     }
     if !args.headers.is_empty() {
         for h in &args.headers {
@@ -273,7 +266,7 @@ pub fn apply_cli_overrides(mut cfg: AppConfig, args: &Args) -> MergedConfig {
     }
 
     MergedConfig {
-        user_agent: cfg.http.user_agent,
+        user_agent: resolve_user_agent(&cfg.http),
         headers: cfg.http.headers,
         insecure: cfg.http.insecure,
         timeout: cfg.http.timeout,
@@ -296,6 +289,15 @@ fn pick<T: Eq>(val: T, default: T, builtin: T) -> T {
     } else {
         val
     }
+}
+
+fn resolve_user_agent(cfg: &HttpConfig) -> String {
+    cfg.headers
+        .iter()
+        .find(|(key, _)| key.eq_ignore_ascii_case("user-agent"))
+        .map(|(_, value)| value.clone())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(default_user_agent)
 }
 
 /// Generate the default TOML config content.

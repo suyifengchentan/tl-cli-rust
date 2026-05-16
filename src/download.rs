@@ -260,8 +260,13 @@ fn build_http_client_with_redirect_policy(
     redirect_policy: reqwest::redirect::Policy,
 ) -> Result<reqwest::Client, String> {
     let mut builder = reqwest::Client::builder()
+        .http1_only()
         .redirect(redirect_policy)
-        .timeout(Duration::from_secs(cfg.timeout));
+        .timeout(Duration::from_secs(cfg.timeout))
+        .no_gzip()
+        .no_deflate()
+        .no_brotli()
+        .no_zstd();
     if cfg.insecure {
         builder = builder.danger_accept_invalid_certs(true);
     }
@@ -303,33 +308,26 @@ async fn download_cookie_challenge_task(
         0
     };
 
-    let mut response = build_cookie_challenge_request(client, task, cfg, existing_len)
-        .send()
-        .await
-        .map_err(|e| format!("request failed for {}: {}", task.url, e))?;
+    let metadata = probe_cookie_challenge_download(client, task, cfg).await?;
+    let total_size = metadata.total_size;
 
-    if existing_len > 0 && response.status() == reqwest::StatusCode::OK {
+    if existing_len > total_size {
         let _ = std::fs::remove_file(&task.save_path);
-        response = build_cookie_challenge_request(client, task, cfg, 0)
-            .send()
-            .await
-            .map_err(|e| format!("request failed for {}: {}", task.url, e))?;
     }
+    let existing_len = if cfg.resume && Path::new(&task.save_path).exists() {
+        std::fs::metadata(&task.save_path)
+            .map(|meta| meta.len())
+            .unwrap_or(0)
+            .min(total_size)
+    } else {
+        0
+    };
 
-    if !response.status().is_success() {
-        return Err(format!(
-            "download failed for {}: bad status {}",
-            task.url,
-            response.status()
-        ));
-    }
-
-    let total_size = response.content_length().map(|len| len + existing_len);
     let writer = open_output_writer(&task.save_path, existing_len > 0).await?;
     let pb = if quiet {
         None
     } else {
-        let pb = ProgressBar::new(total_size.unwrap_or(0));
+        let pb = ProgressBar::new(total_size);
         pb.set_style(
             ProgressStyle::with_template(
                 "{msg}\n{wide_bar} {bytes}/{total_bytes}  {bytes_per_sec}  ETA {eta}",
@@ -341,7 +339,22 @@ async fn download_cookie_challenge_task(
         Some(pb)
     };
 
-    write_response_body(response, writer, pb.as_ref()).await?;
+    if metadata.supports_ranges {
+        download_cookie_challenge_ranges(client, task, cfg, existing_len, total_size, writer, pb.as_ref()).await?;
+    } else {
+        let response = build_cookie_challenge_request(client, task, cfg, existing_len)
+            .send()
+            .await
+            .map_err(|e| format!("request failed for {}: {}", task.url, e))?;
+        if !response.status().is_success() {
+            return Err(format!(
+                "download failed for {}: bad status {}",
+                task.url,
+                response.status()
+            ));
+        }
+        write_response_body(response, writer, pb.as_ref()).await?;
+    }
 
     if let Some(pb) = pb {
         pb.finish_with_message(format!("done: {}", task.show_name));
@@ -360,6 +373,88 @@ async fn download_cookie_challenge_task(
     Ok(())
 }
 
+struct DownloadMetadata {
+    total_size: u64,
+    supports_ranges: bool,
+}
+
+async fn probe_cookie_challenge_download(
+    client: &reqwest::Client,
+    task: &DownloadTask,
+    cfg: &MergedConfig,
+) -> Result<DownloadMetadata, String> {
+    let response = build_cookie_challenge_request(client, task, cfg, 0)
+        .header(reqwest::header::RANGE, "bytes=0-0")
+        .send()
+        .await
+        .map_err(|e| format!("request failed for {}: {}", task.url, e))?;
+
+    if response.status() == reqwest::StatusCode::PARTIAL_CONTENT {
+        if let Some(total_size) = response
+            .headers()
+            .get("content-range")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|s| s.split('/').next_back())
+            .and_then(|s| s.parse::<u64>().ok())
+        {
+            return Ok(DownloadMetadata {
+                total_size,
+                supports_ranges: true,
+            });
+        }
+    }
+
+    if response.status().is_success() {
+        if let Some(total_size) = response.content_length() {
+            return Ok(DownloadMetadata {
+                total_size,
+                supports_ranges: false,
+            });
+        }
+    }
+
+    Err(format!(
+        "download probe failed for {}: bad status {}",
+        task.url,
+        response.status()
+    ))
+}
+
+async fn download_cookie_challenge_ranges(
+    client: &reqwest::Client,
+    task: &DownloadTask,
+    cfg: &MergedConfig,
+    existing_len: u64,
+    total_size: u64,
+    mut writer: Box<dyn AsyncWrite + Unpin + Send>,
+    pb: Option<&ProgressBar>,
+) -> Result<(), String> {
+    let chunk_size = (cfg.chunk_size_mb.max(1) as u64) * 1024 * 1024;
+    let mut start = existing_len;
+
+    while start < total_size {
+        let end = (start + chunk_size - 1).min(total_size - 1);
+        let response = build_cookie_challenge_request(client, task, cfg, 0)
+            .header(reqwest::header::RANGE, format!("bytes={}-{}", start, end))
+            .send()
+            .await
+            .map_err(|e| format!("request failed for {}: {}", task.url, e))?;
+
+        if response.status() != reqwest::StatusCode::PARTIAL_CONTENT {
+            return Err(format!(
+                "download failed for {}: expected 206, got {}",
+                task.url,
+                response.status()
+            ));
+        }
+
+        write_response_body(response, &mut writer, pb).await?;
+        start = end + 1;
+    }
+
+    Ok(())
+}
+
 fn build_cookie_challenge_request(
     client: &reqwest::Client,
     task: &DownloadTask,
@@ -371,11 +466,16 @@ fn build_cookie_challenge_request(
         request = request.header(USER_AGENT, cfg.user_agent.clone());
     }
     for (key, value) in &cfg.headers {
-        request = request.header(key, value);
+        if !key.eq_ignore_ascii_case("accept-encoding") {
+            request = request.header(key, value);
+        }
     }
     for (key, value) in &task.headers {
-        request = request.header(key, value);
+        if !key.eq_ignore_ascii_case("accept-encoding") {
+            request = request.header(key, value);
+        }
     }
+    request = request.header(reqwest::header::ACCEPT_ENCODING, "identity");
     if existing_len > 0 {
         request = request.header(reqwest::header::RANGE, format!("bytes={}-", existing_len));
     }
@@ -404,9 +504,9 @@ async fn open_output_writer(
     Ok(Box::new(file))
 }
 
-async fn write_response_body(
+async fn write_response_body<W: AsyncWrite + Unpin>(
     mut response: reqwest::Response,
-    mut writer: Box<dyn AsyncWrite + Unpin + Send>,
+    mut writer: W,
     pb: Option<&ProgressBar>,
 ) -> Result<(), String> {
     while let Some(chunk) = response
