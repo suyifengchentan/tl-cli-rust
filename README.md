@@ -24,6 +24,9 @@ Or download the binary from [Releases](https://github.com/suyifengchentan/tl-cli
 ## Usage
 
 ```sh
+# Generate default config
+tl --init-config
+
 # Simple download
 tl https://example.com/file.zip
 
@@ -60,8 +63,6 @@ tl --no-resume https://example.com/file.zip
 # Quiet mode (no progress bar)
 tl -q https://example.com/file.zip
 
-# Generate default config
-tl --init-config
 ```
 
 ## Configuration
