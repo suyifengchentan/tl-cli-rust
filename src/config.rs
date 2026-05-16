@@ -61,6 +61,9 @@ pub struct ProxyConfig {
 pub struct MergedConfig {
     pub user_agent: String,
     pub headers: HashMap<String, String>,
+    pub insecure: bool,
+    pub timeout: u64,
+    pub bind_address: String,
     pub threads: usize,
     pub chunk_size_mb: usize,
     pub max_retries: usize,
@@ -76,13 +79,27 @@ pub struct MergedConfig {
 fn default_user_agent() -> String {
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36".to_string()
 }
-fn default_timeout() -> u64 { 30 }
-fn default_threads() -> usize { 64 }
-fn default_chunk_size() -> usize { 10 }
-fn default_max_retries() -> usize { 3 }
-fn default_retry_delay() -> u64 { 1000 }
-fn default_max_retry_delay() -> u64 { 30000 }
-fn default_resume() -> bool { true }
+fn default_timeout() -> u64 {
+    30
+}
+fn default_threads() -> usize {
+    64
+}
+fn default_chunk_size() -> usize {
+    10
+}
+fn default_max_retries() -> usize {
+    3
+}
+fn default_retry_delay() -> u64 {
+    1000
+}
+fn default_max_retry_delay() -> u64 {
+    30000
+}
+fn default_resume() -> bool {
+    true
+}
 
 impl Default for AppConfig {
     fn default() -> Self {
@@ -144,7 +161,11 @@ pub fn load_config(args: &Args) -> AppConfig {
 fn merge_configs(base: AppConfig, override_cfg: AppConfig) -> AppConfig {
     AppConfig {
         http: HttpConfig {
-            user_agent: pick(override_cfg.http.user_agent, base.http.user_agent, default_user_agent()),
+            user_agent: pick(
+                override_cfg.http.user_agent,
+                base.http.user_agent,
+                default_user_agent(),
+            ),
             headers: {
                 let mut h = base.http.headers;
                 for (k, v) in override_cfg.http.headers {
@@ -153,21 +174,49 @@ fn merge_configs(base: AppConfig, override_cfg: AppConfig) -> AppConfig {
                 h
             },
             insecure: override_cfg.http.insecure || base.http.insecure,
-            timeout: pick(override_cfg.http.timeout, base.http.timeout, default_timeout()),
+            timeout: pick(
+                override_cfg.http.timeout,
+                base.http.timeout,
+                default_timeout(),
+            ),
             bind_address: override_cfg.http.bind_address,
         },
         download: DownloadConfig {
-            threads: pick(override_cfg.download.threads, base.download.threads, default_threads()),
-            chunk_size_mb: pick(override_cfg.download.chunk_size_mb, base.download.chunk_size_mb, default_chunk_size()),
-            max_retries: pick(override_cfg.download.max_retries, base.download.max_retries, default_max_retries()),
-            retry_delay_ms: pick(override_cfg.download.retry_delay_ms, base.download.retry_delay_ms, default_retry_delay()),
-            max_retry_delay_ms: pick(override_cfg.download.max_retry_delay_ms, base.download.max_retry_delay_ms, default_max_retry_delay()),
+            threads: pick(
+                override_cfg.download.threads,
+                base.download.threads,
+                default_threads(),
+            ),
+            chunk_size_mb: pick(
+                override_cfg.download.chunk_size_mb,
+                base.download.chunk_size_mb,
+                default_chunk_size(),
+            ),
+            max_retries: pick(
+                override_cfg.download.max_retries,
+                base.download.max_retries,
+                default_max_retries(),
+            ),
+            retry_delay_ms: pick(
+                override_cfg.download.retry_delay_ms,
+                base.download.retry_delay_ms,
+                default_retry_delay(),
+            ),
+            max_retry_delay_ms: pick(
+                override_cfg.download.max_retry_delay_ms,
+                base.download.max_retry_delay_ms,
+                default_max_retry_delay(),
+            ),
             limit_rate: override_cfg.download.limit_rate,
-            resume: base.download.resume,
+            resume: override_cfg.download.resume,
             output_dir: override_cfg.download.output_dir,
         },
         proxy: ProxyConfig {
-            url: if override_cfg.proxy.url.is_empty() { base.proxy.url } else { override_cfg.proxy.url },
+            url: if override_cfg.proxy.url.is_empty() {
+                base.proxy.url
+            } else {
+                override_cfg.proxy.url
+            },
         },
     }
 }
@@ -180,7 +229,9 @@ pub fn apply_cli_overrides(mut cfg: AppConfig, args: &Args) -> MergedConfig {
     if !args.headers.is_empty() {
         for h in &args.headers {
             if let Some((k, v)) = h.split_once(':') {
-                cfg.http.headers.insert(k.trim().to_string(), v.trim().to_string());
+                cfg.http
+                    .headers
+                    .insert(k.trim().to_string(), v.trim().to_string());
             }
         }
     }
@@ -224,6 +275,9 @@ pub fn apply_cli_overrides(mut cfg: AppConfig, args: &Args) -> MergedConfig {
     MergedConfig {
         user_agent: cfg.http.user_agent,
         headers: cfg.http.headers,
+        insecure: cfg.http.insecure,
+        timeout: cfg.http.timeout,
+        bind_address: cfg.http.bind_address,
         threads: cfg.download.threads,
         chunk_size_mb: cfg.download.chunk_size_mb,
         max_retries: cfg.download.max_retries,
@@ -237,7 +291,11 @@ pub fn apply_cli_overrides(mut cfg: AppConfig, args: &Args) -> MergedConfig {
 }
 
 fn pick<T: Eq>(val: T, default: T, builtin: T) -> T {
-    if val == builtin { default } else { val }
+    if val == builtin {
+        default
+    } else {
+        val
+    }
 }
 
 /// Generate the default TOML config content.
