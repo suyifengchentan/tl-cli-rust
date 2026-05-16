@@ -131,9 +131,18 @@ CLI flags override config file values, which override built-in defaults.
 
 ```sh
 git clone https://github.com/suyifengchentan/tl-cli-rust.git
-cd tl-downloader
+cd tl-cli-rust
+
+# Debug build
+cargo build
+
+# Release build
 cargo build --release
+
 # Binary at: target/release/tl
+
+# Run locally
+cargo run -- --help
 ```
 
 ## License
