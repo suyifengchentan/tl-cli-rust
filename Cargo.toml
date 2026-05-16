@@ -10,7 +10,7 @@ name = "tl"
 path = "src/main.rs"
 
 [dependencies]
-TaiLerDownloader = { git = "https://github.com/suyifengchentan/tl-downloader.git", rev = "764691620d68eeaa74acac785c9e86095738e32d", default-features = false, features = ["ftp", "torrent", "ed2k"] }
+TaiLerDownloader = { git = "https://github.com/suyifengchentan/tl-downloader.git", rev = "b0f1b74aad07685218aa2f162ffc9827938c997a", default-features = false, features = ["ftp", "torrent", "ed2k"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "signal"] }
 clap = { version = "4", features = ["derive"] }
 indicatif = { version = "0.17", features = ["tokio"] }
