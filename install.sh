@@ -4,20 +4,7 @@ set -e
 REPO="suyifengchentan/tl-cli-rust"
 BIN="tl"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
-
-# Resolve latest version if not specified
-if [ -z "${VERSION}" ]; then
-    if command -v curl > /dev/null 2>&1; then
-        VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"v?([0-9.]+)".*/\1/')
-    elif command -v wget > /dev/null 2>&1; then
-        VERSION=$(wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"v?([0-9.]+)".*/\1/')
-    fi
-    if [ -z "${VERSION}" ]; then
-        echo "Failed to resolve the latest release version from GitHub."
-        echo "Set VERSION explicitly, for example: VERSION=0.1.0 sh install.sh"
-        exit 1
-    fi
-fi
+VERSION="${VERSION:-0.1.1}"
 
 case "$(uname -s)" in
     Darwin)  ARCH="darwin-aarch64" ;;
