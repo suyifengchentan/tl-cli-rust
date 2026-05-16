@@ -12,7 +12,11 @@ if [ -z "${VERSION}" ]; then
     elif command -v wget > /dev/null 2>&1; then
         VERSION=$(wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"v?([0-9.]+)".*/\1/')
     fi
-    VERSION="${VERSION:-0.1.0}"
+    if [ -z "${VERSION}" ]; then
+        echo "Failed to resolve the latest release version from GitHub."
+        echo "Set VERSION explicitly, for example: VERSION=0.1.0 sh install.sh"
+        exit 1
+    fi
 fi
 
 case "$(uname -s)" in
@@ -26,6 +30,20 @@ URL="https://github.com/${REPO}/releases/download/v${VERSION}/${ARTIFACT}"
 
 echo "Installing tl v${VERSION} for ${ARCH}..."
 echo "  Downloading ${URL}"
+
+if command -v curl > /dev/null 2>&1; then
+    if ! curl -fsI "${URL}" > /dev/null 2>&1; then
+        echo "Release asset not found: ${URL}"
+        echo "Check that version v${VERSION} exists and includes ${ARTIFACT}."
+        exit 1
+    fi
+elif command -v wget > /dev/null 2>&1; then
+    if ! wget -q --spider "${URL}" > /dev/null 2>&1; then
+        echo "Release asset not found: ${URL}"
+        echo "Check that version v${VERSION} exists and includes ${ARTIFACT}."
+        exit 1
+    fi
+fi
 
 if command -v curl > /dev/null 2>&1; then
     curl -fsSL "${URL}" -o "${TMPDIR:-/tmp}/${ARTIFACT}"
