@@ -59,6 +59,17 @@ mkdir -p "${INSTALL_DIR}"
 mv "${TMPDIR:-/tmp}/${ARTIFACT}" "${INSTALL_DIR}/${BIN}"
 echo "Installed to ${INSTALL_DIR}/${BIN}"
 
+case ":$PATH:" in
+    *":${INSTALL_DIR}:"*) ;;
+    *)
+        echo ""
+        echo "Add ${INSTALL_DIR} to your PATH if it is not already available:"
+        echo "  export PATH=\"${INSTALL_DIR}:\$PATH\""
+        echo ""
+        echo "You can add that line to your shell profile, such as ~/.zshrc or ~/.bashrc."
+        ;;
+esac
+
 if command -v ${BIN} > /dev/null 2>&1; then
     ${BIN} --version
 else
