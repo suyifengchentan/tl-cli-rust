@@ -2,8 +2,6 @@ use tokio::fs::{File, OpenOptions};
 use std::fs::OpenOptions as SyncOpenOptions;
 use std::fs::File as SyncFile;
 
-const FAT32_MAX_FILE_SIZE: i64 = 4_294_967_295;
-
 pub async fn create_download_file(
     save_path: &str,
     file_size: Option<i64>,
@@ -15,17 +13,17 @@ pub async fn create_download_file(
         .map_err(|e| format!("Failed to create file: {}", e))?;
 
     if let Some(size) = file_size {
-        if size > FAT32_MAX_FILE_SIZE {
-            return Err(format!(
-                "Insufficient storage or file exceeds FAT32 4GB limit. Please ensure target path is on NTFS/exFAT partition with enough space"
-            ).into());
-        }
-
         let current_len = file.metadata().await.map(|m| m.len()).unwrap_or(0);
         if current_len < size as u64 {
             if let Err(e) = file.set_len(size as u64).await {
                 if e.kind() == std::io::ErrorKind::StorageFull {
                     return Err("Insufficient disk space".into());
+                }
+                if e.kind() == std::io::ErrorKind::FileTooLarge {
+                    return Err(
+                        "File exceeds filesystem size limit. Please use a filesystem that supports large files."
+                            .into(),
+                    );
                 }
                 eprintln!("Warning: Failed to pre-allocate file space ({}), will continue downloading", e);
             }
@@ -46,17 +44,17 @@ pub fn create_download_file_sync(
         .map_err(|e| format!("Failed to create file: {}", e))?;
 
     if let Some(size) = file_size {
-        if size > FAT32_MAX_FILE_SIZE {
-            return Err(format!(
-                "Insufficient storage or file exceeds FAT32 4GB limit. Please ensure target path is on NTFS/exFAT partition with enough space"
-            ));
-        }
-
         let current_len = file.metadata().map(|m| m.len()).unwrap_or(0);
         if current_len < size as u64 {
             if let Err(e) = file.set_len(size as u64) {
                 if e.kind() == std::io::ErrorKind::StorageFull {
                     return Err("Insufficient disk space".to_string());
+                }
+                if e.kind() == std::io::ErrorKind::FileTooLarge {
+                    return Err(
+                        "File exceeds filesystem size limit. Please use a filesystem that supports large files."
+                            .to_string(),
+                    );
                 }
                 eprintln!("Warning: Failed to pre-allocate file space ({}), will continue downloading", e);
             }
