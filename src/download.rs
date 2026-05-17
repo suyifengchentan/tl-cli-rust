@@ -353,7 +353,7 @@ async fn download_cookie_challenge_task(
         )
         .await?;
     } else {
-        let response = build_cookie_challenge_request(client, task, cfg, existing_len)
+        let response = build_cookie_challenge_request(client, task, cfg, existing_len, false)
             .send()
             .await
             .map_err(|e| format!("request failed for {}: {}", task.url, e))?;
@@ -394,7 +394,7 @@ async fn probe_cookie_challenge_download(
     task: &DownloadTask,
     cfg: &MergedConfig,
 ) -> Result<DownloadMetadata, String> {
-    let response = build_cookie_challenge_request(client, task, cfg, 0)
+    let response = build_cookie_challenge_request(client, task, cfg, 0, true)
         .header(reqwest::header::RANGE, "bytes=0-0")
         .send()
         .await
@@ -445,7 +445,7 @@ async fn download_cookie_challenge_ranges(
 
     while start < total_size {
         let end = (start + chunk_size - 1).min(total_size - 1);
-        let response = build_cookie_challenge_request(client, task, cfg, 0)
+        let response = build_cookie_challenge_request(client, task, cfg, 0, false)
             .header(reqwest::header::RANGE, format!("bytes={}-{}", start, end))
             .send()
             .await
@@ -471,9 +471,10 @@ fn build_cookie_challenge_request(
     task: &DownloadTask,
     cfg: &MergedConfig,
     existing_len: u64,
+    use_preflight_user_agent: bool,
 ) -> reqwest::RequestBuilder {
     let mut request = client.get(&task.url);
-    let user_agent = effective_user_agent(&task.url, cfg);
+    let user_agent = request_user_agent(cfg, use_preflight_user_agent);
     if !user_agent.is_empty() {
         request = request.header(USER_AGENT, user_agent);
     }
@@ -494,20 +495,16 @@ fn build_cookie_challenge_request(
     request
 }
 
-fn effective_user_agent(url: &str, cfg: &MergedConfig) -> String {
-    if is_baidu_pan_url(url) {
-        "pan.baidu.com".to_string()
+fn request_user_agent(cfg: &MergedConfig, use_preflight_user_agent: bool) -> String {
+    if use_preflight_user_agent {
+        if cfg.preflight_user_agent.is_empty() {
+            cfg.user_agent.clone()
+        } else {
+            cfg.preflight_user_agent.clone()
+        }
     } else {
         cfg.user_agent.clone()
     }
-}
-
-fn is_baidu_pan_url(url: &str) -> bool {
-    url::Url::parse(url)
-        .ok()
-        .and_then(|parsed| parsed.host_str().map(|host| host.to_ascii_lowercase()))
-        .map(|host| host == "pan.baidu.com" || host.ends_with(".baidu.com"))
-        .unwrap_or(false)
 }
 
 async fn open_output_writer(
@@ -637,7 +634,7 @@ async fn build_task_headers(
     let client = build_http_preflight_client(cfg)?;
 
     let mut request = client.get(url);
-    let user_agent = effective_user_agent(url, cfg);
+    let user_agent = request_user_agent(cfg, true);
     if !user_agent.is_empty() {
         request = request.header(USER_AGENT, user_agent);
     }
@@ -771,9 +768,10 @@ mod tests {
     }
 
     #[test]
-    fn baidu_pan_urls_use_pan_baidu_user_agent() {
+    fn preflight_user_agent_defaults_to_download_user_agent() {
         let cfg = MergedConfig {
             user_agent: "tlcli/0.1.0".to_string(),
+            preflight_user_agent: String::new(),
             headers: HashMap::new(),
             insecure: false,
             timeout: 30,
@@ -791,16 +789,33 @@ mod tests {
             torrent_trackers: Vec::new(),
         };
 
-        assert_eq!(
-            effective_user_agent(
-                "https://d.pcs.baidu.com/file/abc",
-                &cfg
-            ),
-            "pan.baidu.com"
-        );
-        assert_eq!(
-            effective_user_agent("https://example.com/file", &cfg),
-            "tlcli/0.1.0"
-        );
+        assert_eq!(request_user_agent(&cfg, false), "tlcli/0.1.0");
+        assert_eq!(request_user_agent(&cfg, true), "tlcli/0.1.0");
+    }
+
+    #[test]
+    fn preflight_user_agent_can_be_overridden_independently() {
+        let cfg = MergedConfig {
+            user_agent: "tlcli/0.1.0".to_string(),
+            preflight_user_agent: "pan.baidu.com".to_string(),
+            headers: HashMap::new(),
+            insecure: false,
+            timeout: 30,
+            bind_address: String::new(),
+            threads: 4,
+            chunk_size_mb: 50,
+            max_retries: 3,
+            retry_delay_ms: 1000,
+            max_retry_delay_ms: 30000,
+            limit_rate: 0,
+            resume: true,
+            output_dir: String::new(),
+            proxy_url: String::new(),
+            ed2k_gateways: Vec::new(),
+            torrent_trackers: Vec::new(),
+        };
+
+        assert_eq!(request_user_agent(&cfg, false), "tlcli/0.1.0");
+        assert_eq!(request_user_agent(&cfg, true), "pan.baidu.com");
     }
 }

@@ -21,6 +21,8 @@ pub struct HttpConfig {
     #[serde(default)]
     pub headers: HashMap<String, String>,
     #[serde(default)]
+    pub preflight_user_agent: String,
+    #[serde(default)]
     pub insecure: bool,
     #[serde(default = "default_timeout")]
     pub timeout: u64,
@@ -61,6 +63,7 @@ pub struct ProxyConfig {
 #[allow(dead_code)]
 pub struct MergedConfig {
     pub user_agent: String,
+    pub preflight_user_agent: String,
     pub headers: HashMap<String, String>,
     pub insecure: bool,
     pub timeout: u64,
@@ -127,6 +130,7 @@ impl Default for AppConfig {
                     h.insert("Accept-Encoding".into(), "gzip, deflate".into());
                     h
                 },
+                preflight_user_agent: String::new(),
                 insecure: false,
                 timeout: default_timeout(),
                 bind_address: String::new(),
@@ -183,6 +187,11 @@ fn merge_configs(base: AppConfig, override_cfg: AppConfig) -> AppConfig {
                     h.insert(k, v);
                 }
                 h
+            },
+            preflight_user_agent: if override_cfg.http.preflight_user_agent.is_empty() {
+                base.http.preflight_user_agent
+            } else {
+                override_cfg.http.preflight_user_agent
             },
             insecure: override_cfg.http.insecure || base.http.insecure,
             timeout: pick(
@@ -244,6 +253,9 @@ pub fn apply_cli_overrides(mut cfg: AppConfig, args: &Args) -> MergedConfig {
             .headers
             .insert("User-Agent".to_string(), ua.clone());
     }
+    if let Some(ref ua) = args.preflight_user_agent {
+        cfg.http.preflight_user_agent = ua.clone();
+    }
     if !args.headers.is_empty() {
         for h in &args.headers {
             if let Some((k, v)) = h.split_once(':') {
@@ -290,8 +302,11 @@ pub fn apply_cli_overrides(mut cfg: AppConfig, args: &Args) -> MergedConfig {
         cfg.proxy.url = proxy.clone();
     }
 
+    let user_agent = resolve_user_agent(&cfg.http);
+
     MergedConfig {
-        user_agent: resolve_user_agent(&cfg.http),
+        user_agent: user_agent.clone(),
+        preflight_user_agent: resolve_preflight_user_agent(&cfg.http, &user_agent),
         headers: cfg.http.headers,
         insecure: cfg.http.insecure,
         timeout: cfg.http.timeout,
@@ -325,6 +340,14 @@ fn resolve_user_agent(cfg: &HttpConfig) -> String {
         .map(|(_, value)| value.clone())
         .filter(|value| !value.is_empty())
         .unwrap_or_else(default_user_agent)
+}
+
+fn resolve_preflight_user_agent(cfg: &HttpConfig, user_agent: &str) -> String {
+    if cfg.preflight_user_agent.is_empty() {
+        user_agent.to_string()
+    } else {
+        cfg.preflight_user_agent.clone()
+    }
 }
 
 /// Generate the default TOML config content.
