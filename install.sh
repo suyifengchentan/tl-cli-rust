@@ -4,7 +4,7 @@ set -e
 REPO="suyifengchentan/tl-cli-rust"
 BIN="tl"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
-VERSION="${VERSION:-0.1.1}"
+VERSION="${VERSION:-0.1.2}"
 
 case "$(uname -s)" in
     Darwin)  ARCH="darwin-aarch64" ;;

@@ -77,7 +77,6 @@ Config file search order:
 
 [http]
 user_agent = "Mozilla/5.0 ... Chrome/125.0.0.0 Safari/537.36"
-preflight_user_agent = ""
 insecure = false
 timeout = 30
 bind_address = ""
@@ -123,7 +122,6 @@ CLI flags override config file values, which override built-in defaults.
 | `-q`, `--quiet` | false | Suppress progress |
 | `-v`, `--verbose` | false | Verbose output |
 | `--user-agent <STR>` | — | User-Agent (overrides config) |
-| `--preflight-user-agent <STR>` | — | User-Agent for metadata requests |
 | `-c`, `--config <FILE>` | — | Config file path |
 | `--init-config` | — | Print default config and exit |
 | `-h`, `--help` | — | Print help |

@@ -46,11 +46,20 @@ jobs:
           DST="target/${{ matrix.target }}/release/${{ matrix.artifact }}"
           mv "$SRC" "$DST"
 
+      - name: Generate SHA256
+        shell: pwsh
+        run: |
+          $file = "target/${{ matrix.target }}/release/${{ matrix.artifact }}"
+          $hash = (Get-FileHash -Algorithm SHA256 $file).Hash.ToLower()
+          "$hash  ${{ matrix.artifact }}" | Out-File -FilePath "$file.sha256" -Encoding ascii
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: target/${{ matrix.target }}/release/${{ matrix.artifact }}
+          path: |
+            target/${{ matrix.target }}/release/${{ matrix.artifact }}
+            target/${{ matrix.target }}/release/${{ matrix.artifact }}.sha256
 
   release:
     name: Create Release

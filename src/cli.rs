@@ -76,10 +76,6 @@ pub struct Args {
     #[arg(long, value_name = "STR")]
     pub user_agent: Option<String>,
 
-    /// User-Agent for preflight / metadata requests
-    #[arg(long, value_name = "STR")]
-    pub preflight_user_agent: Option<String>,
-
     /// Path to config file
     #[arg(short = 'c', long, value_name = "FILE")]
     pub config: Option<String>,
