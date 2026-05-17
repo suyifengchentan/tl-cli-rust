@@ -473,8 +473,9 @@ fn build_cookie_challenge_request(
     existing_len: u64,
 ) -> reqwest::RequestBuilder {
     let mut request = client.get(&task.url);
-    if !cfg.user_agent.is_empty() {
-        request = request.header(USER_AGENT, cfg.user_agent.clone());
+    let user_agent = effective_user_agent(&task.url, cfg);
+    if !user_agent.is_empty() {
+        request = request.header(USER_AGENT, user_agent);
     }
     for (key, value) in &cfg.headers {
         if !key.eq_ignore_ascii_case("accept-encoding") {
@@ -491,6 +492,22 @@ fn build_cookie_challenge_request(
         request = request.header(reqwest::header::RANGE, format!("bytes={}-", existing_len));
     }
     request
+}
+
+fn effective_user_agent(url: &str, cfg: &MergedConfig) -> String {
+    if is_baidu_pan_url(url) {
+        "pan.baidu.com".to_string()
+    } else {
+        cfg.user_agent.clone()
+    }
+}
+
+fn is_baidu_pan_url(url: &str) -> bool {
+    url::Url::parse(url)
+        .ok()
+        .and_then(|parsed| parsed.host_str().map(|host| host.to_ascii_lowercase()))
+        .map(|host| host == "pan.baidu.com" || host.ends_with(".baidu.com"))
+        .unwrap_or(false)
 }
 
 async fn open_output_writer(
@@ -620,8 +637,9 @@ async fn build_task_headers(
     let client = build_http_preflight_client(cfg)?;
 
     let mut request = client.get(url);
-    if !cfg.user_agent.is_empty() {
-        request = request.header(USER_AGENT, cfg.user_agent.clone());
+    let user_agent = effective_user_agent(url, cfg);
+    if !user_agent.is_empty() {
+        request = request.header(USER_AGENT, user_agent);
     }
     for (key, value) in &cfg.headers {
         request = request.header(key, value);
@@ -750,5 +768,39 @@ mod tests {
         );
 
         assert_eq!(extract_cookie_header(&headers), "bcheck=true; session=abc");
+    }
+
+    #[test]
+    fn baidu_pan_urls_use_pan_baidu_user_agent() {
+        let cfg = MergedConfig {
+            user_agent: "tlcli/0.1.0".to_string(),
+            headers: HashMap::new(),
+            insecure: false,
+            timeout: 30,
+            bind_address: String::new(),
+            threads: 4,
+            chunk_size_mb: 50,
+            max_retries: 3,
+            retry_delay_ms: 1000,
+            max_retry_delay_ms: 30000,
+            limit_rate: 0,
+            resume: true,
+            output_dir: String::new(),
+            proxy_url: String::new(),
+            ed2k_gateways: Vec::new(),
+            torrent_trackers: Vec::new(),
+        };
+
+        assert_eq!(
+            effective_user_agent(
+                "https://d.pcs.baidu.com/file/abc",
+                &cfg
+            ),
+            "pan.baidu.com"
+        );
+        assert_eq!(
+            effective_user_agent("https://example.com/file", &cfg),
+            "tlcli/0.1.0"
+        );
     }
 }
