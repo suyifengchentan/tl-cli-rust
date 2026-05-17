@@ -10,9 +10,12 @@ async fn main() {
     let args = cli::Args::parse();
 
     if args.init_config {
-        let home = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
-        let cfg_dir = home.join(".config").join("tl");
-        let cfg_path = cfg_dir.join("config.toml");
+        let cfg_path = config::primary_config_path(&args);
+        let cfg_dir = cfg_path
+            .parent()
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::path::PathBuf::from("."));
+        let tracker_path = cfg_dir.join("tracker_list.txt");
         std::fs::create_dir_all(&cfg_dir).unwrap_or_else(|e| {
             eprintln!("tl: failed to create {}: {}", cfg_dir.display(), e);
             std::process::exit(1);
@@ -21,7 +24,12 @@ async fn main() {
             eprintln!("tl: failed to write {}: {}", cfg_path.display(), e);
             std::process::exit(1);
         });
+        std::fs::write(&tracker_path, config::default_tracker_list_txt()).unwrap_or_else(|e| {
+            eprintln!("tl: failed to write {}: {}", tracker_path.display(), e);
+            std::process::exit(1);
+        });
         eprintln!("Config written to {}", cfg_path.display());
+        eprintln!("Tracker list written to {}", tracker_path.display());
         return;
     }
 

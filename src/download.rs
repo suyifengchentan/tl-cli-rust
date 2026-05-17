@@ -93,6 +93,8 @@ pub async fn run(
         } else {
             Some(cfg.proxy_url.clone())
         },
+        ed2k_gateways: cfg.ed2k_gateways.clone(),
+        torrent_trackers: cfg.torrent_trackers.clone(),
         headers,
     };
 
@@ -340,7 +342,16 @@ async fn download_cookie_challenge_task(
     };
 
     if metadata.supports_ranges {
-        download_cookie_challenge_ranges(client, task, cfg, existing_len, total_size, writer, pb.as_ref()).await?;
+        download_cookie_challenge_ranges(
+            client,
+            task,
+            cfg,
+            existing_len,
+            total_size,
+            writer,
+            pb.as_ref(),
+        )
+        .await?;
     } else {
         let response = build_cookie_challenge_request(client, task, cfg, existing_len)
             .send()

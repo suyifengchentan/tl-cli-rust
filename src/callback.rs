@@ -16,7 +16,9 @@ static EVENT_TX: Lazy<Mutex<Option<UnboundedSender<CallbackEvent>>>> =
 
 /// Register the sender that the C callback will write to.
 /// Returns the old sender if one was already set.
-pub fn register_sender(tx: UnboundedSender<CallbackEvent>) -> Option<UnboundedSender<CallbackEvent>> {
+pub fn register_sender(
+    tx: UnboundedSender<CallbackEvent>,
+) -> Option<UnboundedSender<CallbackEvent>> {
     EVENT_TX.lock().unwrap().replace(tx)
 }
 

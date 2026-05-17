@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use TaiLerDownloader::core::downloader::{DEFAULT_ED2K_GATEWAYS, DEFAULT_TORRENT_TRACKERS};
 
 use crate::cli::Args;
 
@@ -45,6 +46,8 @@ pub struct DownloadConfig {
     pub resume: bool,
     #[serde(default)]
     pub output_dir: String,
+    #[serde(default = "default_ed2k_gateways")]
+    pub ed2k_gateways: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -71,6 +74,8 @@ pub struct MergedConfig {
     pub resume: bool,
     pub output_dir: String,
     pub proxy_url: String,
+    pub ed2k_gateways: Vec<String>,
+    pub torrent_trackers: Vec<String>,
 }
 
 // Default values
@@ -98,6 +103,18 @@ fn default_max_retry_delay() -> u64 {
 fn default_resume() -> bool {
     true
 }
+fn default_ed2k_gateways() -> Vec<String> {
+    DEFAULT_ED2K_GATEWAYS
+        .iter()
+        .map(|gateway| (*gateway).to_string())
+        .collect()
+}
+fn default_torrent_trackers() -> Vec<String> {
+    DEFAULT_TORRENT_TRACKERS
+        .iter()
+        .map(|tracker| (*tracker).to_string())
+        .collect()
+}
 
 impl Default for AppConfig {
     fn default() -> Self {
@@ -123,6 +140,7 @@ impl Default for AppConfig {
                 limit_rate: 0,
                 resume: true,
                 output_dir: String::new(),
+                ed2k_gateways: default_ed2k_gateways(),
             },
             proxy: ProxyConfig { url: String::new() },
         }
@@ -203,6 +221,11 @@ fn merge_configs(base: AppConfig, override_cfg: AppConfig) -> AppConfig {
             limit_rate: override_cfg.download.limit_rate,
             resume: override_cfg.download.resume,
             output_dir: override_cfg.download.output_dir,
+            ed2k_gateways: if override_cfg.download.ed2k_gateways.is_empty() {
+                base.download.ed2k_gateways
+            } else {
+                override_cfg.download.ed2k_gateways
+            },
         },
         proxy: ProxyConfig {
             url: if override_cfg.proxy.url.is_empty() {
@@ -217,7 +240,9 @@ fn merge_configs(base: AppConfig, override_cfg: AppConfig) -> AppConfig {
 /// Merge CLI flags on top of config file values. CLI flags always win.
 pub fn apply_cli_overrides(mut cfg: AppConfig, args: &Args) -> MergedConfig {
     if let Some(ref ua) = args.user_agent {
-        cfg.http.headers.insert("User-Agent".to_string(), ua.clone());
+        cfg.http
+            .headers
+            .insert("User-Agent".to_string(), ua.clone());
     }
     if !args.headers.is_empty() {
         for h in &args.headers {
@@ -280,6 +305,8 @@ pub fn apply_cli_overrides(mut cfg: AppConfig, args: &Args) -> MergedConfig {
         resume: cfg.download.resume,
         output_dir: cfg.download.output_dir,
         proxy_url: cfg.proxy.url,
+        ed2k_gateways: cfg.download.ed2k_gateways,
+        torrent_trackers: load_tracker_list(args),
     }
 }
 
@@ -304,6 +331,62 @@ fn resolve_user_agent(cfg: &HttpConfig) -> String {
 pub fn default_config_toml() -> String {
     let cfg = AppConfig::default();
     let mut out = toml::to_string_pretty(&cfg).unwrap_or_default();
-    out.insert_str(0, "# tl config\n# Location: ~/.config/tl/config.toml\n\n");
+    out.insert_str(
+        0,
+        "# tl config\n# Location: ~/.config/tl/config.toml\n# BitTorrent trackers: tracker_list.txt in the same directory\n\n",
+    );
     out
+}
+
+pub fn primary_config_path(args: &Args) -> PathBuf {
+    if let Some(ref path) = args.config {
+        return PathBuf::from(path);
+    }
+
+    let cwd_path = PathBuf::from("tl.toml");
+    if cwd_path.exists() {
+        return cwd_path;
+    }
+
+    dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(".config")
+        .join("tl")
+        .join("config.toml")
+}
+
+pub fn tracker_list_path(args: &Args) -> PathBuf {
+    let config_path = primary_config_path(args);
+    let config_dir = config_path
+        .parent()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."));
+    config_dir.join("tracker_list.txt")
+}
+
+pub fn default_tracker_list_txt() -> String {
+    default_torrent_trackers().join("\n")
+}
+
+pub fn load_tracker_list(args: &Args) -> Vec<String> {
+    let tracker_path = tracker_list_path(args);
+    if let Ok(content) = std::fs::read_to_string(tracker_path) {
+        parse_line_list(&content)
+    } else {
+        let defaults = default_torrent_trackers();
+        if let Some(parent) = tracker_list_path(args).parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let _ = std::fs::write(tracker_list_path(args), default_tracker_list_txt());
+        defaults
+    }
+}
+
+fn parse_line_list(content: &str) -> Vec<String> {
+    content
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .map(ToString::to_string)
+        .collect()
 }
